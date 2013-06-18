@@ -199,12 +199,15 @@ def fitline(xdata,ydata,uncertainties=1,m0=1,b0=1):
         """
         return (y - fitfunc(p,x))/err
     # Errors ignore the weighting (for now) TODO: FIXME:
-    if np.std(uncertainties) == 0.:
-        #print "WARNING WARNING WARNING no uncertainties"
+    try:
+        if np.std(uncertainties) == 0.:
+            #print "WARNING WARNING WARNING no uncertainties"
+            uncertainties = 1
+        else:
+            #print "ALL IS GOOD"
+            pass
+    except:
         uncertainties = 1
-    else:
-        #print "ALL IS GOOD"
-        pass
     out = scipy.optimize.leastsq(errfunc,p0[:],
                                  args = (xdata,ydata,uncertainties),
                                  full_output=1)
