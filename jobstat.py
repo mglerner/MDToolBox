@@ -463,7 +463,7 @@ def printqueuesummary(jobinfos):
         # 16:ppn=8:htown:ipath2
         resources = jobinfo['Resource_List.nodes']
         #nodes = int(resources.split(':')[0])
-        nodes = jobinfo['nodes']
+        nodes = jobinfo['nodes'].split()
         if type(nodes) in [type(()),type([])]:
             nodeset = set(nodes)
         else:
@@ -512,17 +512,31 @@ def printqueuesummary(jobinfos):
             results[nodetype][1] = results[nodetype][1] + ppn*nodes
     for nt in results:
         print "%-15s: you've queued %3s nodes and %4s CPUs"%(nt,results[nt][0],results[nt][1])
-        
+
+
+def qstatchunks(progout):
+    lines = progout.split('\n')
+    assert lines[4].startswith('-----') # Make sure the first 5 lines are a header
+    assert lines[-1].strip() == '' # Last is a blank line we can ignore
+    # Now the rest of the lines come in chunks of three
+    assert divmod(len(lines) - 5 -1,3)[1] == 0
+    for (jobline,nodes,comment) in splitseq(lines[5:-1],3):
+        yield jobline, nodes, comment
+
 def jobstat(user,load,numtrajs,includejobstatdirs,clusterid='.lo0.la',verbose=False):
-    """clusterid should be .m1.lobos for NIH, .as0.al for Earlham,
-    etc. We use it to pick out the lines from qstat -ns that qctually
-    describe jobs, rather than separator lines or descriptions.
+    """Notes from the graveyard: we used to ask for 'clusterid'
+    ).m1.lobos for NIH, .as0.al for Earlham, etc). We used it to pick
+    out the lines from qstat -ns that actually describe jobs, rather
+    than separator lines or descriptions. Instead, I'm now just
+    parsing the results all together, assuming there's a common
+    format.
 
     """
     #(retcode,progout) = run('qstat',('-nsu',user))
     (retcode,progout) = run('qstat',('-ns'))
     # first 5 lines are header info
-    joblines = [i.split()[0] for i in progout.split('\n')[5:] if i.split() and clusterid in i.split()[0]]
+    joblines = [jobline for (jobline,nodes,comment) in qstatchunks(progout)]
+    #joblines = [i.split()[0] for i in progout.split('\n')[5:] if i.split() and clusterid in i.split()[0]]
     #print "JOBLINES",joblines
     jobids = [i.split('.')[0] for i in joblines]
     jobinfos = [getjobinfo(jobid=i,load=load) for i in jobids]
