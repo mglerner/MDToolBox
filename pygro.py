@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+"""
+Pure Python version of GROMACS utils
+
+Since this is pyGRO, we'll store things internally in GROMACS units, i.e.
+
+length: nm
+energy:
+
+"""
 
 from __future__ import division
 import os,sys
@@ -9,9 +18,6 @@ import util as U
 class GromacsError(StandardError):
     pass
 
-######
-## Pure Python version of GROMACS utils
-######
 
 class Conversion(object):
     """Convert from, e.g. GROMACS to CHARMM. Most methods will be static.
@@ -23,18 +29,26 @@ class Conversion(object):
         
         pass
     @staticmethod
-    def gro2crd(fn):
+    def gro2crd(fn,outfn=None,cleanup=True,segmap={},resnmap={}):
         """Converts a .gro file to a CHARMM .crd file, first running
         it through editconf to make sure that it's properly centered.
         
         Arguments:
-        - `fn`: input file name. output will have extension replaced with .crd
+        - `fn`: input file name.
+        - `outfn`: output filename. If None, will be input with extension
+                   replaced with .crd
+        - `cleanup`: editconf makes a centered file. If cleanup is True, delete that file.
+        - `segmap`: a mapping from resns to desired segments
+        - `resnmap`: a mapping from existing to desired resnames
+
+        TODO: allow user to specify cfn. Or, better yet, just center in pure Python.
         """
         cfn = os.path.splitext(fn)[0]+'_centered.gro'
-        ofn = os.path.splitext(fn)[0]+'.crd'
+        if outfn is None:
+            outfn = os.path.splitext(fn)[0]+'.crd'
         U.run('editconf','-f %s -o %s -center 0 0 0'%(fn,cfn))
         f = file(cfn)
-        out = file(ofn,'w')
+        out = file(outfn,'w')
         title = '* ' + f.next() + '* \n'
         out.write(title)
         nat = f.next()
@@ -42,13 +56,24 @@ class Conversion(object):
         nat = int(nat)
         for i in range(nat):
             line = f.next()
-            _line = parts2crdline(groline2parts(line))
+            _line = parts2crdline(groline2parts(line),segmap=segmap,resnmap=resnmap)
             out.write(_line)
         line = f.next()
         print "Gromacs listed this box",[10*float(i) for i in line.strip().split()]
+        f.close()
+        if cleanup:
+            U.run('rm',cfn)
         
+    @staticmethod
+    def crd2gro(fn):
+        """Converts a CHARMM .crd file to a GROMACS .gro file, running
+        it through editconf afterwards to make sure that it's properly
+        centered
         
-
+        Arguments:
+         - `fn`: input filename. output will have extension replaced with .crd
+        """
+        raise(NotImplemented)
 
 
 class NDX:
@@ -136,9 +161,14 @@ def parts2groline(parts):
         return "%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n"%tuple(parts)
     else:
         raise Exception('Unknown number of parts')
-def parts2crdline(parts,segid='L'):
+def parts2crdline(parts,segid='L',segmap={},resnmap={}):
     """
     This will multiply coordinates by 10.
+
+    Arguments:
+    - `segid`: default segid
+    - `segmap`: a mapping from resns to desired segments
+    - `resnmap`: a mapping from existing to desired resnames
     """
     # resi,resn,atomname,atomnumber,x,y,z,vx,vy,vz
     if len(parts) == 10:
@@ -150,6 +180,8 @@ def parts2crdline(parts,segid='L'):
     resi,resn,atomname,atomnumber,x,y,z = parts
     x,y,z = 10*x,10*y,10*z
     resn,atomname = resn.strip(),atomname.strip()
+    if resn in segmap: segid = segmap[resn]
+    if resn in resnmap: resn = resnmap[resn]
     '    1    1 DPPC N    -19.21035 -10.18234  21.22432 L    1      0.00000'
     'ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting'
     'I5    I5  1X A4 1X A4 F10.5 F10.5 F10.5 1X A4 1X A4 F10.5'
@@ -746,5 +778,6 @@ try:
             return b[:,0,0],b[:,1,1],b[:,2,2]
             
 except ImportError:
-    print "No PyMACS!"
+    #print "No PyMACS!"
+    pass
 

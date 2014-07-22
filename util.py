@@ -35,7 +35,7 @@ except ImportError:
     if DEBUG: print "no scipy optimize for you"
 
 
-def run(prog,args,input_txt=''):
+def run(prog,args,input_txt='',verbose=False):
     """
     wrapper to handle spaces on windows.
     prog is the full path to the program.
@@ -48,6 +48,9 @@ def run(prog,args,input_txt=''):
     e.g.
 
     (retval,prog_out) = run('/bin/ls','-al /tmp/myusername')
+
+    NOTE: I don't use Windows enough to be sure that this is
+    robust. Consider jetisoning it and just using subprocess.
     """
     import subprocess,tempfile
 
@@ -70,7 +73,8 @@ def run(prog,args,input_txt=''):
     except IOError:
         print "Error opening input_file when trying to run the command."
 
-    print "Running:\n\tprog=%s\n\targs=%s" % (prog,args)
+    if verbose:
+        print "Running:\n\tprog=%s\n\targs=%s" % (prog,args)
     retcode = subprocess.call(args,stdout=output_file.fileno(),stderr=subprocess.STDOUT,stdin=input_file.fileno())
     output_file.seek(0)
     #prog_out = output_file.read()
