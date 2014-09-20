@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import os,sys
+import os,sys,re
 import numpy as np
-from numpy import random
+from numpy import random,std,average,array,sqrt
+import matplotlib.pyplot as plt
 import util as U
+from fileio import parts2groline, parts2crdline, groline2parts
 
 class GromacsError(StandardError):
     pass
@@ -125,62 +127,6 @@ class NDX:
         return [allids.index(i) + 1 for i in self.groups[group]]
          
                 
-
-# Since this is PyGRO, everything will be stored internally in GROMACS units.
-# That means multiply by 10 for CHARMM coordinates, etc.
-def parts2groline(parts):
-    # resi,resn,atomname,atomnumber,x,y,z,vx,vy,vz
-    if len(parts) == 10:
-        return "%5d%-5s%5s%5d%8.3f%8.3f%8.3f%8.4f%8.4f%8.4f\n"%tuple(parts)
-    elif len(parts) == 7:
-        return "%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n"%tuple(parts)
-    else:
-        raise Exception('Unknown number of parts')
-def parts2crdline(parts,segid='L'):
-    """
-    This will multiply coordinates by 10.
-    """
-    # resi,resn,atomname,atomnumber,x,y,z,vx,vy,vz
-    if len(parts) == 10:
-        parts = parts[:7]
-    elif len(parts) == 7:
-        pass
-    else:
-        raise Exception('Unknown number of parts')
-    resi,resn,atomname,atomnumber,x,y,z = parts
-    x,y,z = 10*x,10*y,10*z
-    resn,atomname = resn.strip(),atomname.strip()
-    '    1    1 DPPC N    -19.21035 -10.18234  21.22432 L    1      0.00000'
-    'ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting'
-    'I5    I5  1X A4 1X A4 F10.5 F10.5 F10.5 1X A4 1X A4 F10.5'
-    return '%5i%5i %-4s %-4s%10.5f%10.5f%10.5f %-4s %-4s%10.5f\n'%(atomnumber,resi,resn,atomname,x,y,z,segid,resi,0.0)
-
-#    2    1 DPPC C13  -20.45601 -10.97580  21.35871 L    1      0.00000 (good)
-#1111122222 3333 4444555555555566666666667777777777 8888 99990000000000
-#    1    1 DPP  NC3   -7.65000  -3.35000  11.48000 L    1      0.00000 (good - us)
-
-def groline2parts(line):
-    # resi,resn,atomname,atomnumber,x,y,z,vx,vy,vz
-    # %5d%5s%5s%5d%8.3f%8.3f%8.3f%8.4f%8.4f%8.4f
-    #  5  5  5  5  8    8    8    [8   8    8]
-    resi,resn,atomname,atomnumber,x,y,z = ( int(line[0:5]),
-                                                line[5:10],
-                                                line[10:15],
-                                            int(line[15:20]),
-                                           float(line[20:28]),
-                                           float(line[28:36]),
-                                           float(line[36:44]),)
-    if len(line) > 45:
-        vx,vy,vz = (float(line[44:52]),
-                    float(line[52:60]),
-                    float(line[62:68]),)
-        return [resi,resn,atomname,atomnumber,x,y,z,vx,vy,vz]
-    else:
-        return [resi,resn,atomname,atomnumber,x,y,z]
-def incresi(groline,i=1):
-    parts = groline2parts(groline)
-    parts[0] += i
-    return parts2groline(parts)
 
 class MDP:
     def __init__(self):
@@ -723,28 +669,186 @@ class GeneralITP(ITP):
                 
 
 
-######
-### Using PyMACS
-######
+#######
+# XVG related
+#######
 
-try:
-    import pymacs
-    import numpy
-    class PYM:
-        @staticmethod
-        def getboxes(fname,maxframes=None):
-            fp = pymacs.openXTC(fname)
-            framenum = 0
-            boxes = []
-            while 1:
-                f = pymacs.readXTCFrame(fp)
-                if not f: break
-                framenum += 1
-                if maxframes and framenum > maxframes: break
-                boxes.append(f['box'])
-            b = numpy.array(boxes)
-            return b[:,0,0],b[:,1,1],b[:,2,2]
+def plotdata(x,y=None,yerr=None,numblocks=10,numerrbars=50,colors=('blue','green'),cumavg=True,clear=False,
+             plottitle=None,xaxislabel=None,yaxislabel=None,axes=None,grid=False):
+    """ Our standard plotting routine.
+
+     - The first argument is the data. We try to extract x and y data from it if possible.
+     - Plot 50 error bars if we're given errors.
+     - Do block averaging.
+     - Plot the cumulative average.
+     """
+    if axes is None:
+        raise Error('Need axes instance')
+    txt = ''
+    # Figure out x,y,err
+    if y is None:
+        if len(x.shape) > 1:
+            x,y = x[:,0],x[:,1]
+        else:
+            x,y = array(range(len(x))),x
+    if clear: clf()
+
+    annotation_location = (min(x) + (max(x) - min(x))*0.1,min(y) + (max(y) - min(y))*0.9)
+    #print annotation_location,max(y)
+    axes.plot(x,y,color=colors[0],zorder=10,alpha=0.5)
+
+    if cumavg:
+        ya = np.cumsum(y)/np.arange(1,len(y)+1)
+        axes.plot(x,ya,'k-',zorder=40)
+
+    if yerr is not None:
+        error_step = int(len(x)/numerrbars)
+        if error_step == 0: error_step = len(x)
+        axes.errorbar(x[::error_step],y[::error_step],yerr[::error_step],color=colors[0],zorder=20)
+    blocksize = int(len(x)/numblocks)
+    blocksizes = [len(i) for i in U.splitseq(x,blocksize)]
+    ravg = average(y)
+    rstdev = std(y)
+    txt += 'Raw Avg: {ra:.4f} Raw std dev: {rs:.4f}\n'.format(ra=ravg,rs=rstdev)
+
+    bx = [average(i) for i in U.splitseq(x,blocksize)][:numblocks]
+    byerr = array([std(i) for i in U.splitseq(y,blocksize)])[:numblocks]
+    by = array([average(i) for i in U.splitseq(y,blocksize)])[:numblocks]
+    txt += 'Block Avg: %.4f'%average(by)
+    txt += ', std err: %.4f, avg err: %.4f'%(std(by)/sqrt(numblocks),average(byerr))
+    txt += '\nblocks of length %s'%blocksize
+    if len(blocksizes) > numblocks:
+        txt += ' discarding %s points at the end'%sum(blocksizes[numblocks:])
+    axes.errorbar(bx,by,byerr,elinewidth=20,color=colors[1],barsabove=True,zorder=30)
+    if plottitle: axes.set_title(plottitle)
+    if xaxislabel: axes.set_xlabel(xaxislabel)
+    if yaxislabel: axes.set_ylabel(yaxislabel)
+    axes.annotate(txt,annotation_location)
+    if grid:
+        plt.grid(True)
+
+class XVG:
+    def __init__(self,fname,startdir='.'):
+        self.fname = os.path.join(startdir,fname)
+        self.attributes = {'comments':''}
+        self.columns = ['time']
+        self.units = {'time':'ns'}
+        self.process_file()
+        self.startframe = 0
+        self.stopframe = None
+    def process_file(self):
+        print "processing",self.fname
+        f = file(self.fname)
+        lines = []
+        for line in f:
+            if line.startswith('#'):
+                self.attributes['comments'] += line
+            elif line.startswith('@'):
+                self.add_info(line)
+            else:
+                lines.append([float(i) for i in line.split()])
+        f.close()
+        if lines and (len(lines[-1]) != len(lines[-2])):
+            print "Deleting bad last line :",lines[-1]
+            print "Expected something like:",lines[-2]
+            lines = lines[:-1]
+        self.data = array(lines)
+        if len(self.data) > 0:
+            self.data[::,0] = self.data[::,0]/1000. # convert to nanoseconds
+    def add_info(self,line):
+        line = line[1:].strip()
+        info_type = line.split()[0]
+        rest = line[line.index(info_type)+len(info_type):].strip()
+        if info_type in 'title TYPE'.split():
+            self.attributes[info_type] = rest.replace('"','').strip()
+        elif info_type in 'xaxis yaxis'.split():
+            self.attributes[info_type] = rest.replace('label','').replace('"','').strip()
+            if info_type == 'xaxis' and self.attributes[info_type] == 'Time (ps)':
+                self.attributes[info_type] = 'Time (ns)'
+                
+            if info_type == 'yaxis':
+                self.defaultunit = rest.split('(')[-1].replace(')','').replace('"','').strip()
+        elif re.match('s\d+$',info_type):
+            #@ s1 legend "Coulomb (SR)"
+            rest = rest.split('"')[-2] #Coulomb (SR)
+            if '(' in rest:
+                label = rest.split('(')[0].strip()
+                unit = rest.split('(')[-1].replace(')','').strip()
+                self.columns.append(label)
+                self.units[label] = unit
+            else:
+                self.columns.append(rest)
+                self.units[rest] = self.defaultunit#'kJ mol\S-1\N'
+    def get(self,item):
+        try:
+            result = self.data[:,self.columns.index(item)]
+        except ValueError:
+            # Special cases
+            if item == 'Area':
+                # Don't use self.get here, because it can call through
+                # twice, causing you to lop off startframe frames
+                # twice
+                result = self.data[:,self.columns.index('Box-X')] * self.data[:,self.columns.index('Box-Y')]
+                if item not in self.units: self.units[item] = 'nm^2'
+            else:
+                raise
+        if self.stopframe is not None:
+            return result[self.startframe:self.stopframe]
+        else:
+            return result[self.startframe:]
             
-except ImportError:
-    print "No PyMACS!"
+    def getxy(self,item):
+        if self.stopframe is not None:
+            return self.data[self.startframe:self.stopframe,0],self.get(item)
+        else:
+            return self.data[self.startframe:,0],self.get(item)
+    def getKA(self):
+        # Ka = A*k*T/sigma_A^2
+        #  A is the area per lipid
+        #  k is Boltzmann's constant
+        #  T is the temperature
+        #  sigma^2 is the variance of the area
+        
+        # We'd like dyn/cm units in the 100s
+        # Area comes in nanometers, so multiply by 1e-7 for cgs
+        k = 1.3806488e-16 # dyn/cm, cgs
+        area = self.get('Area')
+        a = average(area) 
+        s2 = std(area)**2
+        T = average(self.get('Temperature'))
+        katot = 1e14 * (a*k*T)/(s2) # in dyn/nm --> dyn/cm
+        numblocks = 10
+        blocksize = int(len(area)/numblocks)
+        blocksizes = [len(i) for i in U.splitseq(area,blocksize)]
+        blocks = U.splitseq(area,blocksize)[:numblocks]
+        kas = [1e14*(average(block)*k*T)/std(block)**2 for block in blocks]
+        return katot,kas
+    def printKA(self):
+        katot,kas = self.getKA()
+        print 'K_A = {ka:f}'.format(ka=katot)
+        print 'K_A blocks: ' + ' '.join(['{ka:f}'.format(ka=ka) for ka in kas])
+        print 'K_A block avg: {ka:f} K_A block std dev {ks:f}'.format(ka=average(kas),ks=std(kas))
+    def plot(self,axes,item,color='',truncat=None,
+             numblocks=10,deavg=False,grid=False):
+        x,y=self.getxy(item)
+        if truncat:
+            x = x[:truncat]
+            y = y[:truncat]
+        if deavg:
+            print "Subtracting averages y = %s"%(average(y),)
+            y = y - average(y)
+        plotdata(x,y,numblocks=numblocks,xaxislabel=self.attributes['xaxis'],yaxislabel='%s (%s)'%(item,self.units[item]),plottitle=item+' ('+os.path.split(self.fname)[-1]+')',axes=axes, grid=grid)
 
+    def plotitem(self,idx,axes):
+        self.plot(axes,self.columns[idx])
+    def plotall(self,figure,ncol=4,tstart=None,skipTime=False):
+        cols = self.columns[:]
+        if skipTime: cols.remove('time')
+        self.plotseveral(figure,cols,ncol)
+    def plotseveral(self,figure,groups,ncol,grid=False):
+        nrow = np.ceil(len(groups)/ncol)
+        for (i,item) in enumerate(groups):
+            #print "Plotting",i,"out of",len(groups),"in subplot",(nrow,ncol,i+1)
+            axes = figure.add_subplot(nrow,ncol,i+1)
+            print "Plotting item",item
+            self.plot(axes,item,grid=grid)

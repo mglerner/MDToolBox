@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-#!/v/bigbox7b/home/mglerner/software/bin/python
-#!/v/apps/python-2.5/bin/python
-
+#!/Library/Frameworks/Python.framework/Versions/7.3/bin/python
 
 import os,glob,re,sys
 import numpy as N, matplotlib as M, pylab as P
