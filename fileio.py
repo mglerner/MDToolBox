@@ -14,7 +14,7 @@ def parts2groline(parts):
         return "%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n"%tuple(parts)
     else:
         raise Exception('Unknown number of parts')
-def parts2crdline(parts,segid='L'):
+def parts2crdline(parts,segid='L',segmap={},resnmap={}):
     """
     This will multiply coordinates by 10.
     """
@@ -28,6 +28,10 @@ def parts2crdline(parts,segid='L'):
     resi,resn,atomname,atomnumber,x,y,z = parts
     x,y,z = 10*x,10*y,10*z
     resn,atomname = resn.strip(),atomname.strip()
+    if resn in segmap: 
+        segid = segmap[resn]
+    if resn in resnmap: 
+        resn = resnmap[resn]
     '    1    1 DPPC N    -19.21035 -10.18234  21.22432 L    1      0.00000'
     'ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting'
     'I5    I5  1X A4 1X A4 F10.5 F10.5 F10.5 1X A4 1X A4 F10.5'
