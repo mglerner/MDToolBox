@@ -10,6 +10,7 @@ energy:
 """
 
 from __future__ import division
+__version__ = 0.2
 import os,sys,re
 import numpy as np
 from numpy import random,std,average,array,sqrt
