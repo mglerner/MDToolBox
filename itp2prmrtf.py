@@ -279,8 +279,9 @@ VATOM VSWItch CTONNB 9.0
                 using a negative angle. E.g. +135 becomes -225. So we'll take
                 Theta to Theta-360
 
-                Then we'll divide by 4.184 and by 2 to get CHARMM's Ktheta, a
-                total conversion of division by 8.368.
+                Then we'll divide by 4.184 and by 2 to get CHARMM's
+                Ktheta, a total conversion of division by 8.368. WAIT
+                NO! It looks like we really want just 4.184.
 
                 NOTE: The previously listed mailing list message again seems
                 to be wrong.
@@ -291,7 +292,8 @@ VATOM VSWItch CTONNB 9.0
                 if functype != 2:
                     raise GromacsError("Angle function type %s not supported: %s"%(functype,line))
                 angle = angle-360
-                forceconst = forceconst / 8.368
+                #forceconst = forceconst / 8.368
+                forceconst = forceconst / 4.184
                 outer = [atomtypemap[a] for a in (i,k)]
                 outer.sort()
                 atoms = outer[0],atomtypemap[j],outer[1]
