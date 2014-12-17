@@ -14,9 +14,29 @@ def parts2groline(parts):
         return "%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n"%tuple(parts)
     else:
         raise Exception('Unknown number of parts')
-def parts2crdline(parts,segid='L',segmap={},resnmap={}):
+def parts2crdline(parts,segid='L',segmap={},resnmap={},nat=0):
     """
     This will multiply coordinates by 10.
+
+    If nat (number of atoms) is 100000, we will use the expanded format.
+    If nat is not specified, we will use the smaller format.
+
+    As per CHARMM [docs](http://www.charmm.org/documentation/c39b1/io.html)
+
+      * Normal format for less than 100000 atoms and PSF IDs with less than
+      five characters
+               title
+               NATOM (I5)
+               ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting
+                 I5    I5  1X A4 1X A4 F10.5 F10.5 F10.5 1X A4 1X A4 F10.5
+      
+      * Expanded format for more than 100000 atoms (upto 10**10) and with
+      upto 8 character PSF IDs. (versions c31a1 and later)
+               title
+               NATOM (I10)
+               ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting
+                 I10   I10 2X A8 2X A8       3F20.10     2X A8 2X A8 F20.10
+
     """
     # resi,resn,atomname,atomnumber,x,y,z,vx,vy,vz
     if len(parts) == 10:
@@ -26,6 +46,8 @@ def parts2crdline(parts,segid='L',segmap={},resnmap={}):
     else:
         raise Exception('Unknown number of parts')
     resi,resn,atomname,atomnumber,x,y,z = parts
+    if atomnumber == 0:
+        print "MY PARTS WERE",parts
     x,y,z = 10*x,10*y,10*z
     resn,atomname = resn.strip(),atomname.strip()
     if resn in segmap: 
@@ -35,7 +57,14 @@ def parts2crdline(parts,segid='L',segmap={},resnmap={}):
     '    1    1 DPPC N    -19.21035 -10.18234  21.22432 L    1      0.00000'
     'ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting'
     'I5    I5  1X A4 1X A4 F10.5 F10.5 F10.5 1X A4 1X A4 F10.5'
-    return '%5i%5i %-4s %-4s%10.5f%10.5f%10.5f %-4s %-4s%10.5f\n'%(atomnumber,resi,resn,atomname,x,y,z,segid,resi,0.0)
+    'I10   I10 2X A8 2X A8       3F20.10     2X A8 2X A8 F20.10'
+    if nat < 100000:
+        return '%5i%5i %-4s %-4s%10.5f%10.5f%10.5f %-4s %-4s%10.5f\n'%(atomnumber,resi,resn,atomname,x,y,z,segid,resi,0.0)
+    else:
+        'ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting'
+        'I10   I10 2X A8 2X A8       3F20.10     2X A8 2X A8 F20.10'
+        return '%10i%10i  %-8s  %-8s%20.10f%20.10f%20.10f  %-8s  %-8s%20.10f\n'%(atomnumber,resi,resn,atomname,x,y,z,segid,resi,0.0)
+
 
 def crdline2parts(line):
     pass

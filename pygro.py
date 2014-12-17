@@ -32,7 +32,7 @@ class Conversion(object):
         
         pass
     @staticmethod
-    def gro2crd(fn,outfn=None,cleanup=True,segmap={},resnmap={}):
+    def gro2crd(fn,outfn=None,cleanup=True,segmap={},resnmap={},renumber=None):
         """Converts a .gro file to a CHARMM .crd file, first running
         it through editconf to make sure that it's properly centered.
         
@@ -43,9 +43,12 @@ class Conversion(object):
         - `cleanup`: editconf makes a centered file. If cleanup is True, delete that file.
         - `segmap`: a mapping from resns to desired segments
         - `resnmap`: a mapping from existing to desired resnames
+        - `renumber`: Force renumbering of atom IDs. If you have more than 100000 lines, 
+                      you need to specify this as True or False.
 
         TODO: allow user to specify cfn. Or, better yet, just center in pure Python.
         """
+
         cfn = os.path.splitext(fn)[0]+'_centered.gro'
         if outfn is None:
             outfn = os.path.splitext(fn)[0]+'.crd'
@@ -55,14 +58,45 @@ class Conversion(object):
         title = '* ' + f.next() + '* \n'
         out.write(title)
         nat = f.next()
-        out.write(nat)
+        #out.write(nat)
         nat = int(nat)
+        if nat < 100000:
+            out.write('%5i\n'%nat)
+        else:
+            out.write('%10i\n'%nat)
+        if nat >= 1000000 :
+            if renumber is None:
+                raise Exception('{fn} had too many lines; you must tell gro2crd whether to explicitly renumber or not'.format(fn=fn))
+            elif renumber is False:
+                print "NOTE: you are explicitly choosing NOT to renumber long file {fn}".format(fn=fn)
+            elif renumber is True:
+                print "NOTE: you are explicitly choosing to renumber long file {fn}".format(fn=fn)
+            else:
+                raise Exception("unknown renumber parameter {r}".format(r=renumber))
+        lastrawresi,renumberedresi = 0,0
         for i in range(nat):
             line = f.next()
-            _line = parts2crdline(groline2parts(line),segmap=segmap,resnmap=resnmap)
+            if renumber:
+                parts = groline2parts(line)
+                [resi,resn,atomname,atomnumber],otherparts = parts[:4],parts[4:]
+                atomnumber = i + 1
+                if resi == lastrawresi:
+                    pass
+                else:
+                    lastrawresi = resi
+                    renumberedresi = renumberedresi + 1
+                resi = renumberedresi
+                parts = [resi,resn,atomname,atomnumber] + otherparts
+                _line = parts2crdline(parts,segmap=segmap,resnmap=resnmap,nat=nat)
+            else:
+                _line = parts2crdline(groline2parts(line),segmap=segmap,resnmap=resnmap)
             out.write(_line)
         line = f.next()
-        print "Gromacs listed this box",[10*float(i) for i in line.strip().split()]
+        a,b,c = [float(i) for i in line.strip().split()]
+        print "Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c)
+        print "A CHARMM line might look like"
+        print "crystal define TETRagonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.".format(a=a*10.,b=b*10.,c=c*10.)
+        
         f.close()
         if cleanup:
             U.run('rm',cfn)

@@ -3,6 +3,9 @@ from __future__ import division
 import os
 from pygro import GeneralITP,GromacsError
 
+# TODO: add exclusions here
+# test on simple file with DPPC and CHOL
+
 def convert(itpname,overwrite=True):
     # defaults
     # atomtypes
@@ -208,10 +211,11 @@ VATOM VSWItch CTONNB 9.0
                         bonds[atoms] = (forceconst,length)
                     else:
                         if bonds[atoms] != (forceconst,length):
-                            raise GromacsError("Multiple definitions for bond %s <--> %s : %s vs. %s\nThis line was %s"%(atoms[0],
-                                                                                                       atoms[1],
-                                                                                                       (forceconst,length),
-                                                                                                       bonds[atoms],line))
+                            raise GromacsError("Multiple definitions for bond %s <--> %s : %s vs. %s\nThis line was %s"%(
+                                    atoms[0], atoms[1],
+                                    (forceconst,length),
+                                    bonds[atoms],
+                                    line))
 
                     rtf += 'BOND %-4s %-4s\n'%(atomnamemap[i],atomnamemap[j])
                 elif functype == 6:
@@ -287,7 +291,12 @@ VATOM VSWItch CTONNB 9.0
                 to be wrong.
                 """
                 if not removecomments(line).strip(): continue
-                i,j,k,functype,angle,forceconst = removecomments(line).split()
+                try:
+                    i,j,k,functype,angle,forceconst = removecomments(line).split()
+                except ValueError:
+                    print "Trouble with angle line."
+                    print "Before comments {line}".format(line=line.rstrip())
+                    print "After comments {line}".format(line=removecomments(line))
                 i,j,k,functype,angle,forceconst = int(i),int(j),int(k),int(functype),float(angle),float(forceconst)
                 if functype != 2:
                     raise GromacsError("Angle function type %s not supported: %s"%(functype,line))
