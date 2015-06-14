@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from __future__ import division
-from __future__ import with_statement
+from __future__ import print_function
+
+
 class Placeholder:
     pass
 #import psyco
@@ -13,7 +15,7 @@ from numpy import apply_along_axis,array,vstack,average,std,sqrt
 try:
     from numpy import loadtxt
 except ImportError:
-    if DEBUG: print "NO LoadTxt"
+    if DEBUG: print("NO LoadTxt")
 from numpy.linalg import norm
 
 try:
@@ -28,11 +30,11 @@ except ImportError:
     mpl = Placeholder()
     mpl.cm = Placeholder()
     mpl.cm.jet = Placeholder()
-    if DEBUG: print "no scipy pylab or matplotlib for you"
+    if DEBUG: print("no scipy pylab or matplotlib for you")
 try:
     import scipy.optimize
 except ImportError:
-    if DEBUG: print "no scipy optimize for you"
+    if DEBUG: print("no scipy optimize for you")
 
 
 def run(prog,args,input_txt='',verbose=False):
@@ -63,7 +65,7 @@ def run(prog,args,input_txt='',verbose=False):
     try:
         output_file = tempfile.TemporaryFile(mode="w+")  # <-- shouldn't this point to the temp dir
     except IOError:
-        print "Error opening output_file when trying to run the command."
+        print("Error opening output_file when trying to run the command.")
 
     try:
         input_file = tempfile.TemporaryFile(mode="w+")  # <-- shouldn't this point to the temp dir
@@ -71,10 +73,10 @@ def run(prog,args,input_txt='',verbose=False):
         input_file.write(input_txt)
         input_file.seek(0)
     except IOError:
-        print "Error opening input_file when trying to run the command."
+        print("Error opening input_file when trying to run the command.")
 
     if verbose:
-        print "Running:\n\tprog=%s\n\targs=%s" % (prog,args)
+        print("Running:\n\tprog=%s\n\targs=%s" % (prog,args))
     retcode = subprocess.call(args,stdout=output_file.fileno(),stderr=subprocess.STDOUT,stdin=input_file.fileno())
     output_file.seek(0)
     #prog_out = output_file.read()
@@ -82,10 +84,10 @@ def run(prog,args,input_txt='',verbose=False):
     output_file.close() #windows doesn't do this automatically
     input_file.close()
     if DEBUG:
-        print "Results were:"
-        print "Return value:",retcode
-        print "Output:"
-        print prog_out
+        print("Results were:")
+        print("Return value:",retcode)
+        print("Output:")
+        print(prog_out)
     return (retcode,prog_out)
 
 
@@ -127,22 +129,22 @@ def lockfile(fname,delay=1):
     """
     lockname = fname+'.lock'
     while os.path.isfile(lockname):
-        print "WAITING FOR LOCK",lockname
+        print("WAITING FOR LOCK",lockname)
         time.sleep(delay)
     f = open(lockname,'w')
-    print "LOCK ACQUIRED",lockname
+    print("LOCK ACQUIRED",lockname)
     f.write("under lockdown\n")
     f.close()
     yield
     os.remove(lockname)
-    print "LOCK RELEASED",lockname
+    print("LOCK RELEASED",lockname)
 
 class Data:
     def __init__(self,*args,**kwargs):
         for a in args:
-            for k,v in a.items():
+            for k,v in list(a.items()):
                 setattr(self,k,v)
-        for k,v in kwargs.items():
+        for k,v in list(kwargs.items()):
             setattr(self,k,v)
     def __str__(self):
         s = 'Data instance\n-------------\n'
@@ -169,8 +171,8 @@ def splitseq(seq,size):
     try:
         return [seq[i:i+size] for i in range(0, len(seq), size)]
     except ValueError:
-        print "Cannot split this seq",seq
-        print "Into this size",size
+        print("Cannot split this seq",seq)
+        print("Into this size",size)
         raise
 # From Python Cookbook 6.18
 def attributesFromArguments(d):
@@ -183,7 +185,7 @@ def attributesFromArguments(d):
     b.thing1 ---> 'cow'
     """
     self=d.pop('self')
-    codeObject = self.__init__.im_func.func_code
+    codeObject = self.__init__.__func__.__code__
     argumentNames = codeObject.co_varnames[1:codeObject.co_argcount]
     for n in argumentNames:
         setattr(self,n,d[n])
@@ -243,7 +245,7 @@ def plotbestline(xdata,ydata,uncertainties=1,m0=1,b0=1,start=0,stop=0,numerrbars
     
 def colorcycle(colors='bgrcmyk',num=1):
     idx = 0
-    yields = range(num)
+    yields = list(range(num))
     while True:
         if idx == len(colors): idx = 0
         for i in yields:
@@ -399,7 +401,7 @@ def plotdata(x,y=None,yerr=None,numblocks=10,numerrbars=50,colors=('blue','green
         if len(x.shape) > 1:
             x,y = x[:,0],x[:,1]
         else:
-            x,y = array(range(len(x))),x
+            x,y = array(list(range(len(x)))),x
     if clear: clf()
 
     annotation_location = (min(x) + (max(x) - min(x))*0.1,min(y) + (max(y) - min(y))*0.9)
@@ -446,7 +448,7 @@ def scatterhist(x,y):
 
     ## start with a rectangular Figure
     #plt.figure(1, figsize=(8,8))
-    print rect_scatter
+    print(rect_scatter)
 
     axScatter = plt.gca()
     axScatter = plt.axes(rect_scatter)
@@ -494,8 +496,8 @@ def gradplot(x,y=None,t=None,
     if t is None:
         t = np.linspace(0,100,len(x))
     #plt.plot(x,y)
-    points = zip(x,y)
-    segments = zip(points[:-1],points[1:])
+    points = list(zip(x,y))
+    segments = list(zip(points[:-1],points[1:]))
     ax = plt.gca()
     if showlines:
         #colors = [cmap(i) for i in mpl.colors.normalize()(t)]
@@ -545,10 +547,10 @@ def smooth(x,windowlen=10,window='hanning'):
     """
 
     if x.ndim != 1:
-        raise ValueError, "smooth only accepts 1 dimension arrays."
+        raise ValueError("smooth only accepts 1 dimension arrays.")
 
     if x.size < windowlen:
-        raise ValueError, "Input vector needs to be bigger than window size."
+        raise ValueError("Input vector needs to be bigger than window size.")
 
 
     if windowlen<3:
@@ -556,7 +558,7 @@ def smooth(x,windowlen=10,window='hanning'):
 
 
     if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
+        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
 
     s=np.r_[2*x[0]-x[windowlen:1:-1],x,2*x[-1]-x[-1:-windowlen:-1]]
@@ -600,7 +602,7 @@ class ProgressBar:
             self.animate = self.animate_noipython
 
     def animate_ipython(self, iter):
-        print '\r', self,
+        print('\r', self, end=' ')
         sys.stdout.flush()
         self.update_iteration(iter + 1)
 

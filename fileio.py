@@ -4,6 +4,8 @@ Here we convert between different standard formats.
 
 At the moment, everything is expected to be in GROMACS internal units.
 """
+from __future__ import division
+from __future__ import print_function
 # Since this is PyGRO, everything will be stored internally in GROMACS units.
 # That means multiply by 10 for CHARMM coordinates, etc.
 def parts2groline(parts):
@@ -47,7 +49,7 @@ def parts2crdline(parts,segid='L',segmap={},resnmap={},nat=0):
         raise Exception('Unknown number of parts')
     resi,resn,atomname,atomnumber,x,y,z = parts
     if atomnumber == 0:
-        print "MY PARTS WERE",parts
+        print("MY PARTS WERE",parts)
     x,y,z = 10*x,10*y,10*z
     resn,atomname = resn.strip(),atomname.strip()
     if resn in segmap: 
