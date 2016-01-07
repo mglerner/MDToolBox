@@ -34,7 +34,7 @@ class Conversion(object):
         
         pass
     @staticmethod
-    def gro2crd(fn,outfn=None,cleanup=True,segmap={},resnmap={},renumber=None):
+    def gro2crd(fn,outfn=None,cleanup=True,segmap={},resnmap={},renumber=None,forceext=False,fixlip=0):
         """Converts a .gro file to a CHARMM .crd file, first running
         it through editconf to make sure that it's properly centered.
         
@@ -51,7 +51,7 @@ class Conversion(object):
         TODO: allow user to specify cfn. Or, better yet, just center in pure Python.
         """
 
-        cfn = os.path.splitext(fn)[0]+'_centered.gro'
+        cfn = os.path.splitext(fn)[0]+'_extra_centered.gro'
         if outfn is None:
             outfn = os.path.splitext(fn)[0]+'.crd'
         U.run('editconf','-f %s -o %s -center 0 0 0'%(fn,cfn))
@@ -62,7 +62,9 @@ class Conversion(object):
         nat = next(f)
         #out.write(nat)
         nat = int(nat)
-        if nat < 100000:
+        if forceext:
+            out.write('%10i  EXT\n'%nat)
+        elif nat < 100000:
             out.write('%5i\n'%nat)
         else:
             out.write('%10i\n'%nat)
@@ -89,15 +91,16 @@ class Conversion(object):
                     renumberedresi = renumberedresi + 1
                 resi = renumberedresi
                 parts = [resi,resn,atomname,atomnumber] + otherparts
-                _line = parts2crdline(parts,segmap=segmap,resnmap=resnmap,nat=nat)
+                _line = parts2crdline(parts,segmap=segmap,resnmap=resnmap,nat={True:10000000,False:nat}[forceext],fixlip=fixlip)
             else:
-                _line = parts2crdline(groline2parts(line),segmap=segmap,resnmap=resnmap)
+                _line = parts2crdline(groline2parts(line),segmap=segmap,resnmap=resnmap,fixlip=fixlip)
             out.write(_line)
         line = next(f)
         a,b,c = [float(i) for i in line.strip().split()]
-        print("Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c))
-        print("A CHARMM line might look like")
-        print("crystal define TETRagonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.".format(a=a*10.,b=b*10.,c=c*10.))
+        print "Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c)
+        print "A CHARMM line might look like"
+        print "crystal define ORTHogonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.".format(a=a*10.,b=b*10.,c=c*10.)
+        print "{a:.4f} {b:.4f} {c:.4f}".format(a=a*10.,b=b*10.,c=c*10.)
         
         f.close()
         if cleanup:
