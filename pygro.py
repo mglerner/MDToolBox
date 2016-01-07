@@ -8,17 +8,19 @@ length: nm
 energy:
 
 """
-
 from __future__ import division
+from __future__ import print_function
+
+
 __version__ = 0.2
 import os,sys,re
 import numpy as np
 from numpy import random,std,average,array,sqrt
 import matplotlib.pyplot as plt
-import util as U
-from fileio import parts2groline, parts2crdline, groline2parts
+from . import util as U
+from .fileio import parts2groline, parts2crdline, groline2parts
 
-class GromacsError(StandardError):
+class GromacsError(Exception):
     pass
 
 
@@ -55,9 +57,9 @@ class Conversion(object):
         U.run('editconf','-f %s -o %s -center 0 0 0'%(fn,cfn))
         f = file(cfn)
         out = file(outfn,'w')
-        title = '* ' + f.next() + '* \n'
+        title = '* ' + next(f) + '* \n'
         out.write(title)
-        nat = f.next()
+        nat = next(f)
         #out.write(nat)
         nat = int(nat)
         if forceext:
@@ -70,14 +72,14 @@ class Conversion(object):
             if renumber is None:
                 raise Exception('{fn} had too many lines; you must tell gro2crd whether to explicitly renumber or not'.format(fn=fn))
             elif renumber is False:
-                print "NOTE: you are explicitly choosing NOT to renumber long file {fn}".format(fn=fn)
+                print("NOTE: you are explicitly choosing NOT to renumber long file {fn}".format(fn=fn))
             elif renumber is True:
-                print "NOTE: you are explicitly choosing to renumber long file {fn}".format(fn=fn)
+                print("NOTE: you are explicitly choosing to renumber long file {fn}".format(fn=fn))
             else:
                 raise Exception("unknown renumber parameter {r}".format(r=renumber))
         lastrawresi,renumberedresi = 0,0
         for i in range(nat):
-            line = f.next()
+            line = next(f)
             if renumber:
                 parts = groline2parts(line)
                 [resi,resn,atomname,atomnumber],otherparts = parts[:4],parts[4:]
@@ -93,7 +95,7 @@ class Conversion(object):
             else:
                 _line = parts2crdline(groline2parts(line),segmap=segmap,resnmap=resnmap,fixlip=fixlip)
             out.write(_line)
-        line = f.next()
+        line = next(f)
         a,b,c = [float(i) for i in line.strip().split()]
         print "Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c)
         print "A CHARMM line might look like"
@@ -147,11 +149,11 @@ class NDX:
             outf.writelines(grp)
         outf.close()
     def addgrp(self,idxs,grp):
-        print "adding group",grp
+        print("adding group",grp)
         self.groups[grp] = idxs
     def write(self,fname):
         f = file(fname,'w')
-        groups = self.groups.keys()
+        groups = list(self.groups.keys())
         groups.sort()
         groups.reverse()
         for g in groups:
@@ -184,7 +186,7 @@ class NDX:
         allids = []
         for g in allgroups:
             allids.extend(self.groups[g])
-        print len(allids)
+        print(len(allids))
         assert len(allids) == len(set(allids))
         allids.sort()
         return [allids.index(i) + 1 for i in self.groups[group]]
@@ -200,10 +202,10 @@ class MDP:
             try:
                 f.write(' '.join([k,'=',]+self.params[k]+['\n',]))
             except TypeError:
-                print "Trying to concatenate"
-                print [k,'=',]
-                print self.params[k]
-                print ['\n',]
+                print("Trying to concatenate")
+                print([k,'=',])
+                print(self.params[k])
+                print(['\n',])
                 raise
         f.close()
     def genseed(self):
@@ -520,7 +522,7 @@ class SingleMoleculeITP(ITP):
             s = isitpsectionline(line) 
             if s:
                 self.setpart(s)
-                print "Now parsing",s,line.strip()
+                print("Now parsing",s,line.strip())
             else:
                 self.addline(line)
         lines = [i for i in self.parts['atoms'] if (i.strip() and not i.strip().startswith(';'))]
@@ -530,7 +532,7 @@ class SingleMoleculeITP(ITP):
         self.incr(0,0) # normalize the lines
 
     def orderedparts(self):
-        keys = self.parts.keys()
+        keys = list(self.parts.keys())
         required = 'header moleculetype atoms bonds angles'.split()
         for r in required: 
             assert r in keys
@@ -550,7 +552,7 @@ class SingleMoleculeITP(ITP):
             
     def setpart(self,p):
         if p in self.parts:
-            print "duplicate for",p
+            print("duplicate for",p)
             sys.exit()
         self.parts[p] = []
         self.currpart = p
@@ -567,7 +569,7 @@ class SingleMoleculeITP(ITP):
                 try:
                     parts[idx] = str(int(parts[idx]) + incat)
                 except IndexError:
-                    print "Could not find idx",idx,"in parts",parts
+                    print("Could not find idx",idx,"in parts",parts)
                     raise
             if incres:
                 parts[2] = str(int(parts[2]) + incres)
@@ -629,9 +631,9 @@ class SingleMoleculeITP(ITP):
                 result += '\n' # still must have a blank line between
         return result
     def printbasic(self):
-        print self._gettxt(includeblanklines=False)
+        print(self._gettxt(includeblanklines=False))
     def printall(self):
-        print self._gettxt(includeblanklines=True)
+        print(self._gettxt(includeblanklines=True))
     def write(self,fn,includeblanklines=True):
         f = file(fn,'w')
         f.write(self._gettxt(includeblanklines=includeblanklines))
@@ -665,7 +667,7 @@ class GeneralITP(ITP):
                 break
             if s:
                 self.setpart(s)
-                print "Now parsing",s,line.strip()
+                print("Now parsing",s,line.strip())
             else:
                 self.addline(line)
 
@@ -676,7 +678,7 @@ class GeneralITP(ITP):
                 self.molecules.append(mol)
 
     def orderedparts(self):
-        keys = self.parts.keys()
+        keys = list(self.parts.keys())
         required = 'header moleculetype atoms bonds angles'.split()
         for r in required: 
             assert r in keys
@@ -696,7 +698,7 @@ class GeneralITP(ITP):
             
     def setpart(self,p):
         if p in self.parts:
-            print "duplicate for",p
+            print("duplicate for",p)
             sys.exit()
         self.parts[p] = []
         self.currpart = p
@@ -714,9 +716,9 @@ class GeneralITP(ITP):
                 result += '\n' # still must have a blank line between
         return result
     def printbasic(self):
-        print self._gettxt(includeblanklines=False)
+        print(self._gettxt(includeblanklines=False))
     def printall(self):
-        print self._gettxt(includeblanklines=True)
+        print(self._gettxt(includeblanklines=True))
     def write(self,fn,includeblanklines=True):
         f = file(fn,'w')
         f.write(self._gettxt(includeblanklines=includeblanklines))
@@ -753,7 +755,7 @@ def plotdata(x,y=None,yerr=None,numblocks=10,numerrbars=50,colors=('blue','green
         if len(x.shape) > 1:
             x,y = x[:,0],x[:,1]
         else:
-            x,y = array(range(len(x))),x
+            x,y = array(list(range(len(x)))),x
     if clear: clf()
 
     annotation_location = (min(x) + (max(x) - min(x))*0.1,min(y) + (max(y) - min(y))*0.9)
@@ -800,7 +802,7 @@ class XVG:
         self.startframe = 0
         self.stopframe = None
     def process_file(self):
-        print "processing",self.fname
+        print("processing",self.fname)
         f = file(self.fname)
         lines = []
         for line in f:
@@ -812,8 +814,8 @@ class XVG:
                 lines.append([float(i) for i in line.split()])
         f.close()
         if lines and (len(lines[-1]) != len(lines[-2])):
-            print "Deleting bad last line :",lines[-1]
-            print "Expected something like:",lines[-2]
+            print("Deleting bad last line :",lines[-1])
+            print("Expected something like:",lines[-2])
             lines = lines[:-1]
         self.data = array(lines)
         if len(self.data) > 0:
@@ -888,9 +890,9 @@ class XVG:
         return katot,kas
     def printKA(self):
         katot,kas = self.getKA()
-        print 'K_A = {ka:f}'.format(ka=katot)
-        print 'K_A blocks: ' + ' '.join(['{ka:f}'.format(ka=ka) for ka in kas])
-        print 'K_A block avg: {ka:f} K_A block std dev {ks:f}'.format(ka=average(kas),ks=std(kas))
+        print('K_A = {ka:f}'.format(ka=katot))
+        print('K_A blocks: ' + ' '.join(['{ka:f}'.format(ka=ka) for ka in kas]))
+        print('K_A block avg: {ka:f} K_A block std dev {ks:f}'.format(ka=average(kas),ks=std(kas)))
     def plot(self,axes,item,color='',truncat=None,
              numblocks=10,deavg=False,grid=False):
         x,y=self.getxy(item)
@@ -898,7 +900,7 @@ class XVG:
             x = x[:truncat]
             y = y[:truncat]
         if deavg:
-            print "Subtracting averages y = %s"%(average(y),)
+            print("Subtracting averages y = %s"%(average(y),))
             y = y - average(y)
         plotdata(x,y,numblocks=numblocks,xaxislabel=self.attributes['xaxis'],yaxislabel='%s (%s)'%(item,self.units[item]),plottitle=item+' ('+os.path.split(self.fname)[-1]+')',axes=axes, grid=grid)
 
@@ -913,5 +915,5 @@ class XVG:
         for (i,item) in enumerate(groups):
             #print "Plotting",i,"out of",len(groups),"in subplot",(nrow,ncol,i+1)
             axes = figure.add_subplot(nrow,ncol,i+1)
-            print "Plotting item",item
+            print("Plotting item",item)
             self.plot(axes,item,grid=grid)
