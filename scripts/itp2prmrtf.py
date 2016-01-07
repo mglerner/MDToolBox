@@ -6,6 +6,28 @@ from pygro import GeneralITP,GromacsError
 # TODO: add exclusions here
 # test on simple file with DPPC and CHOL
 
+"""
+A note on unit conversion:
+
+ - When converting from kcal to Joules, we divide by 4.184
+ - Look for leading factors of 1/2, which turn into division by 2.
+ - We multiply lengths by 10 to go from nm to A.
+ - We multiply by 100 to go from nm^2 to A^2
+ - Charge (same units)
+
+The following sections are converted
+
+ - atoms: straightforward
+ - bonds: straightforward. 
+    GROMACS: (1/2) Kb(b - b0)**2
+    CHARMM: Kb(b - b0)**2
+ - angles:
+    GROMACS: (1/2)Ktheta(cos(Theta) = cos(Theta0))**2
+    CHARMM: Same, now.
+ - constraint type 1
+ - dihedrals
+"""
+
 def convert(itpname,overwrite=True):
     # defaults
     # atomtypes
@@ -171,8 +193,7 @@ VATOM VSWItch CTONNB 9.0
         # through the atom lines above.
         if 'bonds' in mol:
             for line in mol['bonds']:
-                """
-                CHARMM:
+                """CHARMM:
                 !
                 !V(bond) = Kb(b - b0)**2
                 !
@@ -187,13 +208,15 @@ VATOM VSWItch CTONNB 9.0
 
                 so we will need to multiply by b0 by 10
 
-                and Kb gets divided by 4.184 to convert to Joules, 100 to
-                convert from nm**2 to A**2, and 2 to handle the leading
-                (1/2). The total conversion factor is then division by 836.8.
+                and Kb gets divided by 4.184 to convert from kJ to
+                kcal, 100 to convert from (1/nm**2) to (1/A**2), and 2
+                to handle the leading 1/2. The total conversion factor
+                is then division by 836.8.
 
                 NOTE:
                 http://www.ks.uiuc.edu/Research/namd/mailing_list/namd-l/1358.html
                 seems to be off .. it says 824.8
+
                 """
                 if not removecomments(line).strip(): continue
                 i,j,functype,length,forceconst = removecomments(line).split()

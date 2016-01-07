@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from __future__ import division
 import sys,os
 
 
@@ -14,6 +16,7 @@ DEFAULTS = {'annealing':'no',
             'disre_mixed':'no',
             'disre_tau':'0',
             'dt':'0.001',
+            'epsilon_rf':'0',
             'epsilon_surface':'0',
             'ewald_rtol':'1e-05',
             'fourier_nx':'0',
@@ -40,6 +43,7 @@ DEFAULTS = {'annealing':'no',
             'pbc':'xyz',
             'pcoupl':'no',
             'pcoupltype':'isotropic',
+            'periodic_molecules':'no',
             'pme_order':'4',
             'sc_alpha':'0',
             'sc_sigma':'0.3',
@@ -70,7 +74,7 @@ DEFAULTS = {'annealing':'no',
             'zero_temp_time':'',
             }
 def mdpparams(fn):
-    f = file(fn)
+    f = open(fn)
     result = {}
     for line in f:
         if line.find(';') >= 0:
@@ -81,7 +85,7 @@ def mdpparams(fn):
         try:
             k,v = [i.strip() for i in line.split('=')]
         except ValueError:
-            print fn,line
+            print(fn,line)
             raise
         k = k.lower().replace('-','_')
         v = v.lower()
@@ -104,14 +108,14 @@ def printparm(p,m1,m2):
     if not pm1:        pm1 = '_'*plen
     if not pm2:        pm2 = '_'*plen
     if pm1 != pm2:
-        print '%20s : %20s : %20s'%(p,pm1,pm2)
+        print('%20s : %20s : %20s'%(p,pm1,pm2))
 def compare(fn1,fn2):
     m1 = mdpparams(fn1)
     m2 = mdpparams(fn2)
     params = list(set(m1.keys()).union(set(m2.keys())))
     params.sort()
-    print '%20s : %20s : %20s'%(' ',fn1,fn2)
-    print '%20s : %20s : %20s'%('-'*20,'-'*20,'-'*20,)
+    print('%20s : %20s : %20s'%(' ',fn1,fn2))
+    print('%20s : %20s : %20s'%('-'*20,'-'*20,'-'*20,))
     for p in params:
         printparm(p,m1,m2)
 if __name__ == '__main__':
