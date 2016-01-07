@@ -14,8 +14,9 @@ def parts2groline(parts):
         return "%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n"%tuple(parts)
     else:
         raise Exception('Unknown number of parts')
-def parts2crdline(parts,segid='L',segmap={},resnmap={},nat=0):
+def parts2crdline(parts,segid='L',segmap={},resnmap={},nat=0,fixlip=0):
     """
+    fixlip is a hack that subtracts from the lipid segment numbers.
     This will multiply coordinates by 10.
 
     If nat (number of atoms) is 100000, we will use the expanded format.
@@ -61,9 +62,13 @@ def parts2crdline(parts,segid='L',segmap={},resnmap={},nat=0):
     if nat < 100000:
         return '%5i%5i %-4s %-4s%10.5f%10.5f%10.5f %-4s %-4s%10.5f\n'%(atomnumber,resi,resn,atomname,x,y,z,segid,resi,0.0)
     else:
+        if segid == 'WAT':
+            resi2 = resi - fixlip
+        else:
+            resi2 = resi
         'ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting'
         'I10   I10 2X A8 2X A8       3F20.10     2X A8 2X A8 F20.10'
-        return '%10i%10i  %-8s  %-8s%20.10f%20.10f%20.10f  %-8s  %-8s%20.10f\n'%(atomnumber,resi,resn,atomname,x,y,z,segid,resi,0.0)
+        return '%10i%10i  %-8s  %-8s%20.10f%20.10f%20.10f  %-8s  %-8s%20.10f\n'%(atomnumber,resi,resn,atomname,x,y,z,segid,resi2,0.0)
 
 
 def crdline2parts(line):

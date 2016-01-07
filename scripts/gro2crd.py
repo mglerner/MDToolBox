@@ -51,9 +51,14 @@ parser.add_argument('--rename',nargs='+',help='A list of RESNs to rename, e.g. "
 parser.add_argument('--segs',nargs='+',help='A list of RESN, SEGI pairs. Any residue of name RESN will get assigned to SEGI. e.g. "DPP L W WAT" would assign DPPs to the L segment and Ws to the W segment. If you are also using --rename, use the un-renamed resis. WARNING: we do not reorder things, so this only works if your residues are listed in chunks corresponding to the segments',action=DictAction,default={})
 parser.add_argument('--renumber',default=None,action='store_true',
                     help='If your .gro has more than 1000000 atoms, you can run out of space in fixed-length fields. Specify this to explicitly choose to renumber atoms and residues')
+parser.add_argument('--forceext',default=False,action='store_true',
+                    help='Force us to use the CHARMM extended format',
+)
+parser.add_argument('--fixlip',default=0,type=int,
+                    help='cheap hack that fixes lipid segment numbering')
 
 args = parser.parse_args()
 
 #print args
 
-pyg.Conversion.gro2crd(fn=args.grofile,outfn=None,segmap=args.segs,resnmap=args.rename,renumber=args.renumber)
+pyg.Conversion.gro2crd(fn=args.grofile,outfn=None,segmap=args.segs,resnmap=args.rename,renumber=args.renumber,forceext=args.forceext,fixlip=args.fixlip)
