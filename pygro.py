@@ -97,10 +97,10 @@ class Conversion(object):
             out.write(_line)
         line = next(f)
         a,b,c = [float(i) for i in line.strip().split()]
-        print "Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c)
-        print "A CHARMM line might look like"
-        print "crystal define ORTHogonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.".format(a=a*10.,b=b*10.,c=c*10.)
-        print "{a:.4f} {b:.4f} {c:.4f}".format(a=a*10.,b=b*10.,c=c*10.)
+        print("Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c))
+        print("A CHARMM line might look like")
+        print("crystal define ORTHogonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.".format(a=a*10.,b=b*10.,c=c*10.))
+        print("{a:.4f} {b:.4f} {c:.4f}".format(a=a*10.,b=b*10.,c=c*10.))
         
         f.close()
         if cleanup:
@@ -803,7 +803,7 @@ class XVG:
         self.stopframe = None
     def process_file(self):
         print("processing",self.fname)
-        f = file(self.fname)
+        f = open(self.fname)
         lines = []
         for line in f:
             if line.startswith('#'):
