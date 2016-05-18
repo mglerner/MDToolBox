@@ -48,9 +48,12 @@ parser = argparse.ArgumentParser(description=description,
     )
 parser.add_argument("grofile",help="A GROMACS-formatted .gro file")
 parser.add_argument('--rename',nargs='+',help='A list of RESNs to rename, e.g. "A AA B BB" would rename A to AA and B to BB',action=DictAction,default={})
-parser.add_argument('--segs',nargs='+',help='A list of RESN, SEGI pairs. Any residue of name RESN will get assigned to SEGI. e.g. "DPP L W WAT" would assign DPPs to the L segment and Ws to the W segment. If you are also using --rename, use the un-renamed resis. WARNING: we do not reorder things, so this only works if your residues are listed in chunks corresponding to the segments',action=DictAction,default={})
+parser.add_argument('--renameatname',nargs='+',help='A list of ATOM names to rename, e.g. "CL- CL"',action=DictAction,default={})
+parser.add_argument('--segs',nargs='+',help='A list of RESN, SEGI pairs. Any residue of name RESN will get assigned to SEGI. e.g. "DPP L W WAT" would assign DPPs to the L segment and Ws to the W segment. See also --default-seg. If you are also using --rename, use the un-renamed resis. WARNING: we do not reorder things, so this only works if your residues are listed in chunks corresponding to the segments',action=DictAction,default={})
+parser.add_argument('--defaultseg',default=None,help='If specified, all residues not remapped by --segs will be placed in this segment. Particularly useful for proteins.')
 parser.add_argument('--renumber',default=None,action='store_true',
                     help='If your .gro has more than 1000000 atoms, you can run out of space in fixed-length fields. Specify this to explicitly choose to renumber atoms and residues')
+parser.add_argument('--writecryst',default=False,action='store_true',help='Write out a cryst.str file, with that name, expecting to use ../common/box.cry')
 parser.add_argument('--forceext',default=False,action='store_true',
                     help='Force us to use the CHARMM extended format',
 )
@@ -61,4 +64,4 @@ args = parser.parse_args()
 
 #print args
 
-pyg.Conversion.gro2crd(fn=args.grofile,outfn=None,segmap=args.segs,resnmap=args.rename,renumber=args.renumber,forceext=args.forceext,fixlip=args.fixlip)
+pyg.Conversion.gro2crd(fn=args.grofile,outfn=None,segmap=args.segs,defaultseg=args.defaultseg,resnmap=args.rename,atnamemap=args.renameatname,renumber=args.renumber,forceext=args.forceext,fixlip=args.fixlip,writecryst=args.writecryst)

@@ -34,7 +34,7 @@ class Conversion(object):
         
         pass
     @staticmethod
-    def gro2crd(fn,outfn=None,cleanup=True,segmap={},resnmap={},renumber=None,forceext=False,fixlip=0):
+    def gro2crd(fn,outfn=None,cleanup=True,segmap={},defaultseg=None,resnmap={},atnamemap={},renumber=None,forceext=False,fixlip=0,writecryst=False):
         """Converts a .gro file to a CHARMM .crd file, first running
         it through editconf to make sure that it's properly centered.
         
@@ -44,7 +44,9 @@ class Conversion(object):
                    replaced with .crd
         - `cleanup`: editconf makes a centered file. If cleanup is True, delete that file.
         - `segmap`: a mapping from resns to desired segments
+        - `defaultseg`: if not None, all segs not remapped by segmap get placed into this segment.
         - `resnmap`: a mapping from existing to desired resnames
+        - `atnamemap`: like resnmap, but for atom names
         - `renumber`: Force renumbering of atom IDs. If you have more than 100000 lines, 
                       you need to specify this as True or False.
 
@@ -91,16 +93,31 @@ class Conversion(object):
                     renumberedresi = renumberedresi + 1
                 resi = renumberedresi
                 parts = [resi,resn,atomname,atomnumber] + otherparts
-                _line = parts2crdline(parts,segmap=segmap,resnmap=resnmap,nat={True:10000000,False:nat}[forceext],fixlip=fixlip)
+                _line = parts2crdline(parts,segmap=segmap,defaultseg=defaultseg,resnmap=resnmap,atnamemap=atnamemap,nat={True:10000000,False:nat}[forceext],fixlip=fixlip)
             else:
-                _line = parts2crdline(groline2parts(line),segmap=segmap,resnmap=resnmap,fixlip=fixlip)
+                _line = parts2crdline(groline2parts(line),segmap=segmap,defaultseg=defaultseg,resnmap=resnmap,atnamemap=atnamemap,fixlip=fixlip)
             out.write(_line)
         line = next(f)
         a,b,c = [float(i) for i in line.strip().split()]
-        print "Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c)
-        print "A CHARMM line might look like"
-        print "crystal define ORTHogonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.".format(a=a*10.,b=b*10.,c=c*10.)
-        print "{a:.4f} {b:.4f} {c:.4f}".format(a=a*10.,b=b*10.,c=c*10.)
+        print("Gromacs listed this box as {a} {b} {c}".format(a=a,b=b,c=c))
+        print("A CHARMM line might look like")
+        print("crystal define ORTHogonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.".format(a=a*10.,b=b*10.,c=c*10.))
+        print("{a:.4f} {b:.4f} {c:.4f}".format(a=a*10.,b=b*10.,c=c*10.))
+        if writecryst:
+            cf = file('cryst.str','w')
+            cf.write('''* setup simulation cell via crystal for DPPC bilayer
+*
+ 
+crystal define TETRagonal {a:.4f} {b:.4f} {c:.4f} 90. 90. 90.
+open read unit 4 card name ../common/box.cry
+crystal read unit 4 card
+close unit 4
+! IMAGE CENTERING BY RESIDUE
+image byres
+ 
+return
+'''.format(a=a*10.,b=b*10.,c=c*10.))
+            cf.close()
         
         f.close()
         if cleanup:
