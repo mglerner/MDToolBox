@@ -820,7 +820,7 @@ class XVG:
         self.stopframe = None
     def process_file(self):
         print("processing",self.fname)
-        f = file(self.fname)
+        f = open(self.fname)
         lines = []
         for line in f:
             if line.startswith('#'):
